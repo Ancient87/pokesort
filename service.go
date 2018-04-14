@@ -1,13 +1,15 @@
 package main
 
 import (
-        "errors"
-        "strings"
+//        "errors"
+//        "strings"
         "net/http"
-        "encoding/jason"
+        "encoding/json"
         "fmt"
         "time"
         "sort"
+        "log"
+        "io/ioutil"
 )
 
 var pokeApiEndpoint = "http://pokeapi.co/api/v2"
@@ -28,7 +30,7 @@ type By func(p1, p2 *Pokemon) bool
 
 
 // Method on By to sort to sort argument slice
-func (by By) Sort(pokemon []Pokemon) {
+func (by By) Sort(pokemon Pokemons) {
     ps := &pokeSorter {
         pokemon: pokemon,
         by:      by, // 
@@ -38,20 +40,20 @@ func (by By) Sort(pokemon []Pokemon) {
 
 
 // Implement sort interface by returning length of array
-func (s Pokemons) Len() int { return len(s) }
+func (s pokeSorter) Len() int { return len(s.pokemon) }
 // Implement sort interface by providing a way to swap pokemon in an array slice
-func (s Pokemon) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s pokeSorter) Swap(i, j int) { s.pokemon[i], s.pokemon[j] = s.pokemon[j], s.pokemon[i] }
 
 // byId implements Sort.Interface as Pokemons have Len and Swap and byId provides a Less
-type byId struct { Pokemons }
+//type byId struct { Pokemons }
 
 // Complete sort interface implementation for ByID
-func (s byId) Less(i, j int) bool { return s.Pokemons[i].Id < s.Pokemons[j].Id }
+func (s pokeSorter) Less(i, j int) bool { return s.pokemon[i].Id < s.pokemon[j].Id }
 
 // struct that sorts a slice of pokemon based on the function provided
 // Satisfies sorter interface by virtue of defining a function of type by
 type pokeSorter struct {
-    pokemon []Pokemon
+    pokemon Pokemons
     by      By
 }
 
@@ -62,7 +64,7 @@ type querier interface {
 
 // PokeService does things with pokemon
 type Service interface {
-    Sort(pokemonNames... string) ([]pokemon, error)
+    Sort(pokemonNames... string) (Pokemons, error)
 }
 
 // pokeService is a struct that implements Service int
@@ -71,24 +73,24 @@ type pokeService struct {
 }
 
 // Constructor for pokeService return snew pokeService
-func NewPokeService() Pokeservice {
+func NewPokeService() *pokeService {
     return &pokeService{
-        querier:   nil,
+        q:   nil,
     }
 }
 
 // Take list of pokemonnames and sort them by ID
-func (pokeService) SortPokemonByIDFromName(pokemonNames... string) *Pokemons {
-    ps := getPokemonByName(pokemonNames)
-    sortPokemonByID(ps)
-    return ps
+func (s *pokeService) SortPokemonByIDFromName(pokemonNames []string) *Pokemons {
+    ps := s.getPokemonsByName(pokemonNames)
+    s.sortPokemonByID(ps)
+    return &ps
 }
 
 // Take a bunch of pokemon and soer them by their ID
-func (pokeService) sortPokemonByID(p Pokemons)  {
+func (s *pokeService) sortPokemonByID(p Pokemons)  {
         ps := &pokeSorter {
-        pokemon: pokemons,
-        by: byId,
+        pokemon: p,
+//        by: byId,
     }
     // Invoke sort library on the planetsorter
     sort.Sort(ps)
@@ -97,23 +99,23 @@ func (pokeService) sortPokemonByID(p Pokemons)  {
 
 // Sorts pokemon and returns a list of sorted pokemon
 // Makes pokeService implement Service interface
-func (pokeService) getPokemonsByName(pokemonNames... string) *Pokemons {
-    monsters = Pokemons
+func (s *pokeService) getPokemonsByName(pokemonNames []string) Pokemons {
+    var monsters Pokemons
     // Invoke makePokemonFromName for each name passed
-    for _, name range pokemonNames {
-        p := getPokemonByName(name)
-        monsters.append(p)
+    for _, name := range pokemonNames {
+        p := s.getPokemonByName(name)
+        monsters = append(monsters, &p)
     }
     return monsters
 }
 
 // Queries PokeAPI and returns Pokemon Struct for one Pokemon by Name
-func getPokemonByName(pokemonName string) Pokemon {
+func (s *pokeService) getPokemonByName(pokemonName string) Pokemon {
     // Call Poke API and get pokemon json
-    client = http.Client{
-        Timeout: time.Second *2,
+    client := http.Client{
+        Timeout: time.Second *20,
     }
-    url := "%s%s%s", pokeApiEndpoint, pokeApiName, pokemonName
+    url := fmt.Sprintf("%s%s%s", pokeApiEndpoint, pokeApiName, pokemonName)
     req, err := http.NewRequest(http.MethodGet, url, nil)
     if err != nil {
         log.Fatal(err)
@@ -135,8 +137,7 @@ func getPokemonByName(pokemonName string) Pokemon {
    if jsonErr != nil {
         log.Fatal(jsonErr)
    }
-
-
+   return pokemon
 }
 
 
@@ -148,4 +149,3 @@ func makeQuerier() querier {
 */
 
 
-}
